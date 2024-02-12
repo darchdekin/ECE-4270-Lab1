@@ -78,5 +78,5 @@ void initialize();
 void print_program(); /*IMPLEMENT THIS*/
 void print_instruction(uint32_t);
 
-void R_Print(rd,f3,rs1,rs2,f7);
-void 
+//void R_Print(rd,f3,rs1,rs2,f7);
+//void 

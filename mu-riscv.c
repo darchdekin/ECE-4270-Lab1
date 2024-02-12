@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include "mu-riscv.h"
 
@@ -55,6 +56,32 @@ uint32_t mem_read_32(uint32_t address)
 					(MEM_REGIONS[i].mem[offset+2] << 16) |
 					(MEM_REGIONS[i].mem[offset+1] <<  8) |
 					(MEM_REGIONS[i].mem[offset+0] <<  0);
+		}
+	}
+	return 0;
+}
+
+uint32_t mem_read_16(uint32_t address, uint32_t value)
+{
+	int i;
+	for (i = 0; i < NUM_MEM_REGION; i++) {
+		if ( (address >= MEM_REGIONS[i].begin) &&  ( address <= MEM_REGIONS[i].end) ) {
+			uint32_t offset = address - MEM_REGIONS[i].begin;
+			return	(MEM_REGIONS[i].mem[offset+1] <<  8) |
+					(MEM_REGIONS[i].mem[offset+0] <<  0);
+		}
+	}
+	return 0;
+	
+}
+
+uint32_t mem_read_8(uint32_t address, uint32_t value)
+{
+	int i;
+	for (i = 0; i < NUM_MEM_REGION; i++) {
+		if ( (address >= MEM_REGIONS[i].begin) &&  ( address <= MEM_REGIONS[i].end) ) {
+			uint32_t offset = address - MEM_REGIONS[i].begin;
+			return	(MEM_REGIONS[i].mem[offset+0] <<  0);
 		}
 	}
 	return 0;
@@ -355,6 +382,29 @@ void R_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t
 					break;
 				}	
 			break;
+		case 1:				//left shift logical
+			NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] << NEXT_STATE.REGS[rs2]);
+			break;
+		case 2:				//set less than
+			NEXT_STATE.REGS[rd] = (rs1 < rs2)?1:0;
+			break;
+		case 3:				//set less than unsigned
+			NEXT_STATE.REGS[rd] = (rs1 < rs2)?1:0;
+			break;
+		case 4:				//xor
+			NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] ^ NEXT_STATE.REGS[rs2]);
+			break;
+		case 5:
+			switch(f7){
+				case 0:		//right shift logical
+					NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] >> rs2);
+					break;
+				case 32:	//right shift arithmetic
+					NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] >> rs2);
+					break;
+			}
+
+
 		case 6: 			//or
 			NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] | NEXT_STATE.REGS[rs2]);
 			break;
@@ -380,6 +430,10 @@ void ILoad_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 
 	case 2: //lw
 		NEXT_STATE.REGS[rd] = mem_read_32(NEXT_STATE.REGS[rs1] + imm);
+		break;
+	case 4:
+		break;
+	case 5:
 		break;
 	
 	default:
@@ -431,10 +485,12 @@ void Iimm_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 		}
 		break;
 	
-	case 2:
+	case 2:		//slti
+		NEXT_STATE.REGS[rd] = (rs1 < imm)?1:0;
 		break;
 
 	case 3:
+		NEXT_STATE.REGS[rd] = (rs1 < imm)?1:0;
 		break;
 
 	default:
@@ -481,6 +537,176 @@ void U_Processing() {
 	// hi
 }
 
+void R_print(uint32_t rd, uint32_t f3, uint32_t rs1,uint32_t rs2,uint32_t f7)
+{
+	char * arg_string;
+	switch(f3){
+		case 0:
+			switch(f7){
+				case 0:		//add
+					arg_string = "add";
+					break;
+				case 32:	//sub
+					arg_string = "sub";
+					break;
+				default:
+					RUN_FLAG = FALSE;
+					break;
+				}	
+			break;
+		case 1:				//left shift logical
+			arg_string = "sll";
+			break;
+		case 2:				//set less than
+			arg_string = "slt";
+			break;
+		case 3:				//set less than unsigned
+			arg_string = "sltu";
+			break;
+		case 4:				//xor
+			arg_string = "xor";
+			break;
+		case 5:
+			switch(f7){
+				case 0:		//right shift logical
+					arg_string = "srl";
+					break;
+				case 32:	//right shift arithmetic
+					arg_string = "sra";
+					break;
+			}
+
+
+		case 6:				//or
+			arg_string = "or";
+			break;
+		case 7:				//and
+			arg_string = "and";
+			break;
+		default:
+			RUN_FLAG = FALSE;
+			break;
+	}
+	printf("%s x%u x%u x%u\n",arg_string,rd,rs1,rs2);
+	
+}
+void ILoad_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
+	char * arg_string;
+	switch (f3)
+	{
+	case 0: //lb
+		arg_string = "lb";
+		break;
+
+	case 1: //lh
+		arg_string = "lh";
+		break;
+
+	case 2: //lw
+		arg_string = "lw";
+		break;
+	case 4:
+		break;
+	case 5:
+		break;
+	
+	default:
+		printf("Invalid instruction");
+		RUN_FLAG = FALSE;
+		break;
+	}
+	printf("%s %u %u(x%u)\n",arg_string,rd,imm,rs1);
+}
+
+void Iimm_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm)
+{
+	uint32_t imm0_4 = (imm << 7) >> 7;
+	uint32_t imm5_11 = imm >> 5;
+
+	char * arg_string;
+	switch (f3)
+	{
+	case 0: //addi
+		arg_string = "addi";
+		break;
+
+	case 4: //xori
+		arg_string = "xori";
+		break;
+	
+	case 6: //ori
+		arg_string = "ori";
+		break;
+	
+	case 7: //andi
+		arg_string = "andi";
+		break;
+	
+	case 1: //slli
+		arg_string = "slli";
+		break;
+	
+	case 5: //srli and srai
+		switch (imm5_11)
+		{
+		case 0: //srli
+			arg_string = "srli";
+			break;
+
+		case 32: //srai
+			arg_string = "srai";
+			break;
+		
+		default:
+			RUN_FLAG = FALSE;
+			break;
+		}
+		break;
+	
+	case 2:		//slti
+		arg_string = "slti";
+		break;
+
+	case 3:		//sktiu
+		arg_string = "sltiu";
+		break;
+
+	default:
+		printf("Invalid instruction");
+		RUN_FLAG = FALSE;
+		break;
+	}
+	printf("%s x%u x%u x%u\n",arg_string,rd,rs1,imm0_4);
+}
+
+void S_print(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t imm11) {
+	// Recombine immediate
+	uint32_t imm = (imm11 << 5) + imm4;
+	char * arg_string;
+
+	switch (f3)
+	{
+	case 0: //sb
+		arg_string = "sb";
+		break;
+	
+	case 1: //sh
+		arg_string = "sh";
+		break;
+
+	case 2: //sw
+		arg_string = "sw";
+		break;
+
+	default:
+		printf("Invalid instruction");
+		RUN_FLAG = FALSE;
+		break;
+	}
+	printf("%s %u(x%u) %u\n",arg_string,imm,rs1,rs2);
+}
+
+
 
 static inline uint32_t rd_get(uint32_t instruction)
 {
@@ -512,29 +738,32 @@ static inline uint32_t bigImm_get(uint32_t instruction)
 	return (instruction & 0xfff00000) >> 20;
 }
 
-void instruction_map(uint32_t args)
+void instruction_map(uint32_t args, bool PRINT_FLAG)
 {
 	uint8_t type = (uint8_t)(args & 0x3f);
 	switch(type)
 	{
 		case(0x03): //IL
 		{
+			if(PRINT_FLAG) {ILoad_print(rd_get(args), funct3_get(args), rs1_get(args), bigImm_get(args)); break;}
 			ILoad_Processing(rd_get(args) , funct3_get(args) , rs1_get(args) , bigImm_get(args));
 			break;
 		}
 		case(0x13): //Iimm
 		{
+			if(PRINT_FLAG) { Iimm_print(rd_get(args) , funct3_get(args) , rs1_get(args) , bigImm_get(args)); break;}
 			Iimm_Processing(rd_get(args) , funct3_get(args) , rs1_get(args) , bigImm_get(args));
 			break;
 		}
 		case(0x23): //S 
 		{
+			if(PRINT_FLAG) { S_print(rd_get(args) , funct3_get(args), rs1_get(args) , rs2_get(args), funct7_get(args)); break;}
 			S_Processing(rd_get(args) , funct3_get(args), rs1_get(args) , rs2_get(args), funct7_get(args));
 			break;
 		}
 		case(0x33): //R
 		{
-			
+			if(PRINT_FLAG) { R_print(rd_get(args) , funct3_get(args), rs1_get(args) , rs2_get(args), funct7_get(args)); break;}
 			R_Processing(rd_get(args) , funct3_get(args), rs1_get(args) , rs2_get(args), funct7_get(args));
 			break;
 		}
@@ -553,7 +782,7 @@ void handle_instruction()
 	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
 	uint32_t PC = CURRENT_STATE.PC;
 	uint32_t instruction = mem_read_32(PC);
-	instruction_map(instruction);
+	instruction_map(instruction,false);
 	NEXT_STATE.PC = PC + 4;
 }
 
@@ -577,12 +806,13 @@ void print_program(){
 	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
 
 
-	uint32_t addr = MEM_TEXT_BEGIN;
+	uint32_t temp_pc = MEM_TEXT_BEGIN, i = 0;
 
-	while(1){
-		print_instruction(addr);
-		addr += 4;
-
+	while(i < PROGRAM_SIZE){
+		uint32_t instruction = mem_read_32(temp_pc);
+		instruction_map(instruction,true);
+		temp_pc += 4;
+		i++;
 		//exit loop at some point
 	}
 }
@@ -614,7 +844,7 @@ void print_instruction(uint32_t addr){
 			uint32_t maskf7 = 0xFE000000;
 			uint32_t f7 = instruction & maskf7;
 			f7 = f7 >> 25;
-			R_Print(rd,f3,rs1,rs2,f7);
+			R_print(rd,f3,rs1,rs2,f7);
 		} else {
 			printf("instruction print not yet created\n");
 		}
