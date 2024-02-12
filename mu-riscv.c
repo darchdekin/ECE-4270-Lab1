@@ -79,12 +79,36 @@ void mem_write_32(uint32_t address, uint32_t value)
 	}
 }
 
+void SYSCALL(CPU_State given_state)
+{
+	uint32_t code = given_state.REGS[2];
+	//TODO : implement the rest of the syscall codes....
+	switch(code)
+	{
+		case(1):
+			printf("%d\n",given_state.REGS[4]);
+			break;
+		case(2):
+			break;
+		case(3):
+			break;
+		case(4):
+			break;
+		case(10):
+			RUN_FLAG = FALSE;
+			break;
+		default:
+			break;
+	}
+}
+
 /***************************************************************/
 /* Execute one cycle                                                                                                              */
 /***************************************************************/
 void cycle() {                                                
 	handle_instruction();
 	CURRENT_STATE = NEXT_STATE;
+	SYSCALL(CURRENT_STATE);
 	INSTRUCTION_COUNT++;
 }
 
@@ -527,7 +551,6 @@ void handle_instruction()
 {
 	/*IMPLEMENT THIS*/
 	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
-	NEXT_STATE = CURRENT_STATE;
 	uint32_t PC = CURRENT_STATE.PC;
 	uint32_t instruction = mem_read_32(PC);
 	instruction_map(instruction);
