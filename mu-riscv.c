@@ -113,13 +113,32 @@ void SYSCALL(CPU_State given_state)
 	switch(code)
 	{
 		case(1):
+			//print int
 			printf("%d\n",given_state.REGS[4]);
 			break;
 		case(2):
+			//print float
 			break;
 		case(3):
+			//print double
 			break;
 		case(4):
+			//print string
+			break;
+		case(5):
+			//read int
+			break;
+		case(6):
+			//read float
+			break;
+		case(7):
+			//read double
+			break;
+		case(8):
+			//read string
+			break;
+		case(9):
+			//sbrk
 			break;
 		case(10):
 			RUN_FLAG = FALSE;
@@ -137,6 +156,7 @@ void cycle() {
 	CURRENT_STATE = NEXT_STATE;
 	SYSCALL(CURRENT_STATE);
 	INSTRUCTION_COUNT++;
+	if(PROGRAM_SIZE == INSTRUCTION_COUNT) RUN_FLAG = false; //end program after handling last instruction
 }
 
 /***************************************************************/
