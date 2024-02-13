@@ -32,6 +32,7 @@ void help() {
 /***************************************************************/
 uint32_t byte_to_word(uint8_t byte)
 {
+	//handles twos-complement signed numbers; sign-extends the byte
     return (byte & 0x80) ? (byte | 0xffffff80) : byte;
 }
 
@@ -40,6 +41,7 @@ uint32_t byte_to_word(uint8_t byte)
 /***************************************************************/
 uint32_t half_to_word(uint16_t half)
 {
+	//handles twos-complement signed numbers; sign-extends the halfword
     return (half & 0x8000) ? (half | 0xffff8000) : half;
 }
 
@@ -458,8 +460,12 @@ void ILoad_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 		NEXT_STATE.REGS[rd] = mem_read_32(NEXT_STATE.REGS[rs1] + imm);
 		break;
 	case 4:
+		// lbu load byte unsigned
+		NEXT_STATE.REGS[rd] = (mem_read_32(NEXT_STATE.REGS[rs1] + imm)) & 0xFF;
 		break;
 	case 5:
+		// lhu load half unsigned
+		NEXT_STATE.REGS[rd] = (mem_read_32(NEXT_STATE.REGS[rs1] + imm)) & 0xFFFF;
 		break;
 	
 	default:
