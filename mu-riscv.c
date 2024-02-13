@@ -446,6 +446,9 @@ void R_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t
 }
 
 void ILoad_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
+	// I noticed that this function reads the memory address from NEXT_STATE rather than CURRENT_STATE.
+	// That's probably fine since the two should be the same at this point,
+	// but it might cause problems in the future if we need to implement pipelining.
 	switch (f3)
 	{
 	case 0: //lb
@@ -533,6 +536,9 @@ void Iimm_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 }
 
 void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t imm11) {
+	// I noticed that this function reads the memory address from NEXT_STATE rather than CURRENT_STATE.
+	// That's probably fine since the two should be the same at this point,
+	// but it might cause problems in the future if we need to implement pipelining.
 	// Recombine immediate
 	uint32_t imm = (imm11 << 5) + imm4;
 
@@ -647,7 +653,7 @@ void ILoad_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 		RUN_FLAG = FALSE;
 		break;
 	}
-	printf("%s %u %u(x%u)\n",arg_string,rd,imm,rs1);
+	printf("%s x%u %u(x%u)\n",arg_string,rd,imm,rs1);
 }
 
 void Iimm_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm)
@@ -735,7 +741,7 @@ void S_print(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t im
 		RUN_FLAG = FALSE;
 		break;
 	}
-	printf("%s %u(x%u) %u\n",arg_string,imm,rs1,rs2);
+	printf("%s x%u %u(x%u)\n",arg_string,rs2,imm,rs1);
 }
 
 
