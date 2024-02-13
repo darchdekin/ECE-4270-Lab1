@@ -117,25 +117,30 @@ void SYSCALL(CPU_State given_state)
 			printf("%d\n",given_state.REGS[4]);
 			break;
 		case(2):
-			//print float
+			//print float in f12
 			break;
 		case(3):
-			//print double
+			//print double in f12
 			break;
 		case(4):
-			//print string
+			//print string in memory address $a0
 			break;
 		case(5):
-			//read int
+			//read int to $v0
+			(void) scanf("%d", &NEXT_STATE.REGS[2]);
 			break;
 		case(6):
 			//read float
+			scanf("%f", (float*) &NEXT_STATE.REGS[2]);
 			break;
 		case(7):
 			//read double
+			scanf("%lf", (double*) &NEXT_STATE.REGS[2]);
 			break;
 		case(8):
 			//read string
+			//$a0 = memory address of string input buffer
+			// $a1 = length of string buffer (n)
 			break;
 		case(9):
 			//sbrk
@@ -146,6 +151,7 @@ void SYSCALL(CPU_State given_state)
 		default:
 			break;
 	}
+
 }
 
 /***************************************************************/
