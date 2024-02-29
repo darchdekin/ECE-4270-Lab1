@@ -563,8 +563,32 @@ void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	}
 }
 
-void B_Processing() {
-	// hi
+void B_Processing(uint32_t imm12 , uint32_t imm10_5, uint32_t imm4_1, uint32_t imm11, uint32_t rs2, uint32_t rs1, uint32_t funct3) 
+{
+	int32_t imm = (imm12 << 11) | (imm11 << 10) | (imm10_5 << 4) | (imm4_1);
+	uint8_t imm_mult = 0;
+
+	switch(funct3)
+	{
+		case 0x0:
+			imm_mult = (rs1 == rs2);
+			break;
+		case 0x1:
+			imm_mult = (rs1 != rs2);
+		case 0x4:
+			imm_mult = (rs1 < rs2);
+		case 0x5:
+			imm_mult = (rs1 >= rs2);
+		case 0x6:
+			imm_mult = (rs1 < rs2);
+		case 0x7:
+			imm_mult = (rs1 >= rs2);
+		default:
+			RUN_FALG = FALSE;
+			break;
+
+	}
+	CURRENT_STATE.PC += (imm * imm_mult);
 }
 
 void J_Processing() {
