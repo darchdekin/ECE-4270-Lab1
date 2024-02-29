@@ -584,7 +584,7 @@ void B_Processing(uint32_t imm12 , uint32_t imm10_5, uint32_t imm4_1, uint32_t i
 		case 0x7:
 			imm_mult = (rs1 >= rs2);
 		default:
-			RUN_FALG = FALSE;
+			RUN_FLAG = FALSE;
 			break;
 
 	}
