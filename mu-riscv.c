@@ -164,7 +164,8 @@ void cycle() {
 	CURRENT_STATE = NEXT_STATE;
 	SYSCALL(CURRENT_STATE);
 	INSTRUCTION_COUNT++;
-	if(PROGRAM_SIZE == INSTRUCTION_COUNT) RUN_FLAG = false; //end program after handling last instruction
+	//if(PROGRAM_SIZE == INSTRUCTION_COUNT) RUN_FLAG = false; //end program after handling last instruction
+	if(CURRENT_STATE.PC > (PROGRAM_SIZE * 4) + MEM_TEXT_BEGIN) RUN_FLAG = false;
 }
 
 /***************************************************************/
@@ -593,13 +594,26 @@ void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	}
 }
 
+static inline int32_t int12_cast(int32_t q)
+{
+	int8_t hi8 = (q >> 4) & 0xff;
+	int8_t lo4 = q & 0xf;
+
+	int32_t hi8_cast = hi8;
+	hi8_cast <<= 4;
+	hi8_cast += lo4;
+	return hi8_cast;
+}
+
 void B_Processing(uint32_t opcode) 
 {
-	int32_t imm = ( ((opcode >> 7) & 1) << 10 | ((opcode >> 31) & 1) << 11 | ((opcode >> 25) & 0x3F) << 4 | ((opcode >> 8) & 0xF)); 
+	int32_t imm = ( (((opcode >> 7) & 1) << 10) | (((opcode >> 31) & 1) << 11) | (((opcode >> 25) & 0x3F) << 4) | (((opcode >> 8) & 0xF))); 
 	uint32_t funct3 = funct3_get(opcode);
-	uint32_t rs1 = rs1_get(opcode);
-	uint32_t rs2 = rs2_get(opcode);
+	uint32_t rs1 = CURRENT_STATE.REGS[rs1_get(opcode)];
+	uint32_t rs2 = CURRENT_STATE.REGS[rs2_get(opcode)];
 	uint8_t imm_mult = 0;
+
+	imm = int12_cast(imm);
 
 	switch(funct3)
 	{
@@ -626,7 +640,7 @@ void B_Processing(uint32_t opcode)
 			break;
 
 	}
-	CURRENT_STATE.PC += (imm * imm_mult);
+	CURRENT_STATE.PC += (((imm<<1)-4) * (imm_mult));
 }
 
 void J_Processing() {
@@ -806,6 +820,45 @@ void S_print(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t im
 	printf("%s x%u %u(x%u)\n",arg_string,rs2,imm,rs1);
 }
 
+void B_print(uint32_t opcode)
+{
+	int32_t imm = ( (((opcode >> 7) & 1) << 10) | (((opcode >> 31) & 1) << 11) | (((opcode >> 25) & 0x3F) << 4) | (((opcode >> 8) & 0xF))); 
+	uint32_t funct3 = funct3_get(opcode);
+	uint32_t rs1 = rs1_get(opcode);
+	uint32_t rs2 = rs2_get(opcode);
+
+	char * arg_string = "\0";
+
+	imm = int12_cast(imm);
+
+	switch(funct3)
+	{
+		case 0x0:
+			arg_string = "beq";
+			break;
+		case 0x1:
+			arg_string = "beq";
+			break;
+		case 0x4:
+			arg_string = "beq";
+			break;
+		case 0x5:
+			arg_string = "beq";
+			break;
+		case 0x6:
+			arg_string = "beq";
+			break;
+		case 0x7:
+			arg_string = "beq";
+			break;
+		default:
+			printf("Invalid Instruction\n");
+			break;
+
+	}
+	printf("%s x%u, x%u, %d\n",arg_string,rs1,rs2,imm);
+}
+
 
 
 
@@ -840,6 +893,7 @@ void instruction_map(uint32_t args, bool PRINT_FLAG)
 		}
 		case(0x63):
 		{
+			if(PRINT_FLAG){B_print(args); break;}
 			B_Processing(args);
 			break;
 		}
@@ -859,7 +913,7 @@ void handle_instruction()
 	uint32_t PC = CURRENT_STATE.PC;
 	uint32_t instruction = mem_read_32(PC);
 	instruction_map(instruction,false);
-	NEXT_STATE.PC = PC + 4;
+	NEXT_STATE.PC = CURRENT_STATE.PC + 4;
 }
 
 
