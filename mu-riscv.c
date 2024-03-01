@@ -394,6 +394,36 @@ void load_program() {
 	fclose(fp);
 }
 
+static inline uint32_t rd_get(uint32_t instruction)
+{
+	return (instruction & 0xF80) >> 7;
+}
+
+static inline uint32_t funct3_get(uint32_t instruction)
+{
+	return (instruction & 0x7000) >> 12;
+}
+
+static inline uint32_t rs1_get(uint32_t instruction)
+{
+	return (instruction & 0xf8000) >> 15;
+}
+
+static inline uint32_t rs2_get(uint32_t instruction)
+{
+	return (instruction & 0x1f00000) >> 20;
+}
+
+static inline uint32_t funct7_get(uint32_t instruction)
+{
+	return (instruction & 0xfe000000) >> 25;
+}
+
+static inline uint32_t bigImm_get(uint32_t instruction)
+{
+	return (instruction & 0xfff00000) >> 20;
+}
+
 void R_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t f7) {
 	//printf("internal debugging: rd = %x , f3 = %x , rs1 = %x , rs2 = %x , f7 = %x\n" ,rd,f3,rs1,rs2,f7 );
 	switch(f3){
@@ -545,15 +575,15 @@ void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	switch (f3)
 	{
 	case 0: //sb
-		mem_write_32((NEXT_STATE.REGS[rs1] + imm), NEXT_STATE.REGS[rs2]);
+		mem_write_32((CURRENT_STATE.REGS[rs1] + imm), CURRENT_STATE.REGS[rs2]);
 		break;
 	
 	case 1: //sh
-		mem_write_32((NEXT_STATE.REGS[rs1] + imm), NEXT_STATE.REGS[rs2]);
+		mem_write_32((CURRENT_STATE.REGS[rs1] + imm), CURRENT_STATE.REGS[rs2]);
 		break;
 
 	case 2: //sw
-		mem_write_32((NEXT_STATE.REGS[rs1] + imm), NEXT_STATE.REGS[rs2]);
+		mem_write_32((CURRENT_STATE.REGS[rs1] + imm), CURRENT_STATE.REGS[rs2]);
 		break;
 
 	default:
@@ -563,9 +593,12 @@ void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	}
 }
 
-void B_Processing(uint32_t imm12 , uint32_t imm10_5, uint32_t imm4_1, uint32_t imm11, uint32_t rs2, uint32_t rs1, uint32_t funct3) 
+void B_Processing(uint32_t opcode) 
 {
-	int32_t imm = (imm12 << 11) | (imm11 << 10) | (imm10_5 << 4) | (imm4_1);
+	int32_t imm = ( ((opcode >> 7) & 1) << 10 | ((opcode >> 31) & 1) << 11 | ((opcode >> 25) & 0x3F) << 4 | ((opcode >> 8) & 0xF)); 
+	uint32_t funct3 = funct3_get(opcode);
+	uint32_t rs1 = rs1_get(opcode);
+	uint32_t rs2 = rs2_get(opcode);
 	uint8_t imm_mult = 0;
 
 	switch(funct3)
@@ -575,14 +608,19 @@ void B_Processing(uint32_t imm12 , uint32_t imm10_5, uint32_t imm4_1, uint32_t i
 			break;
 		case 0x1:
 			imm_mult = (rs1 != rs2);
+			break;
 		case 0x4:
 			imm_mult = (rs1 < rs2);
+			break;
 		case 0x5:
 			imm_mult = (rs1 >= rs2);
+			break;
 		case 0x6:
 			imm_mult = (rs1 < rs2);
+			break;
 		case 0x7:
 			imm_mult = (rs1 >= rs2);
+			break;
 		default:
 			RUN_FLAG = FALSE;
 			break;
@@ -601,7 +639,7 @@ void U_Processing() {
 
 void R_print(uint32_t rd, uint32_t f3, uint32_t rs1,uint32_t rs2,uint32_t f7)
 {
-	char * arg_string;
+	char * arg_string = "\0";
 	switch(f3){
 		case 0:
 			switch(f7){
@@ -653,7 +691,7 @@ void R_print(uint32_t rd, uint32_t f3, uint32_t rs1,uint32_t rs2,uint32_t f7)
 	
 }
 void ILoad_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
-	char * arg_string;
+	char * arg_string = "\0";
 	switch (f3)
 	{
 	case 0: //lb
@@ -685,7 +723,7 @@ void Iimm_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm)
 	uint32_t imm0_4 = (imm << 7) >> 7;
 	uint32_t imm5_11 = imm >> 5;
 
-	char * arg_string;
+	char * arg_string = "\0";
 	switch (f3)
 	{
 	case 0: //addi
@@ -744,7 +782,7 @@ void Iimm_print(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm)
 void S_print(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t imm11) {
 	// Recombine immediate
 	uint32_t imm = (imm11 << 5) + imm4;
-	char * arg_string;
+	char * arg_string = "\0";
 
 	switch (f3)
 	{
@@ -770,39 +808,10 @@ void S_print(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t im
 
 
 
-static inline uint32_t rd_get(uint32_t instruction)
-{
-	return (instruction & 0xF80) >> 7;
-}
-
-static inline uint32_t funct3_get(uint32_t instruction)
-{
-	return (instruction & 0x7000) >> 12;
-}
-
-static inline uint32_t rs1_get(uint32_t instruction)
-{
-	return (instruction & 0xf8000) >> 15;
-}
-
-static inline uint32_t rs2_get(uint32_t instruction)
-{
-	return (instruction & 0x1f00000) >> 20;
-}
-
-static inline uint32_t funct7_get(uint32_t instruction)
-{
-	return (instruction & 0xfe000000) >> 25;
-}
-
-static inline uint32_t bigImm_get(uint32_t instruction)
-{
-	return (instruction & 0xfff00000) >> 20;
-}
 
 void instruction_map(uint32_t args, bool PRINT_FLAG)
 {
-	uint8_t type = (uint8_t)(args & 0x3f);
+	uint8_t type = (uint8_t)(args & 0x7f);
 	switch(type)
 	{
 		case(0x03): //IL
@@ -827,6 +836,11 @@ void instruction_map(uint32_t args, bool PRINT_FLAG)
 		{
 			if(PRINT_FLAG) { R_print(rd_get(args) , funct3_get(args), rs1_get(args) , rs2_get(args), funct7_get(args)); break;}
 			R_Processing(rd_get(args) , funct3_get(args), rs1_get(args) , rs2_get(args), funct7_get(args));
+			break;
+		}
+		case(0x63):
+		{
+			B_Processing(args);
 			break;
 		}
 		default:
